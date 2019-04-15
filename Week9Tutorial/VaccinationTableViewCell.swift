@@ -10,6 +10,9 @@ import UIKit
 
 class VaccinationTableViewCell: UITableViewCell {
 
+    @IBOutlet weak var ausLabel: UILabel!
+    @IBOutlet weak var otherLabel: UILabel!
+    
     override func awakeFromNib() {
         super.awakeFromNib()
         // Initialization code

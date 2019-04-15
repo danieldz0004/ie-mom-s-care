@@ -6,84 +6,147 @@
 //  Copyright © 2019 Jason Haasz. All rights reserved.
 //
 
+import Foundation
 import UIKit
 
-private let reuseIdentifier = "Cell"
+//表格排序协议
+protocol UICollectionGridViewSortDelegate: class {
+    func sort(colIndex: Int, asc: Bool, rows: [[Any]]) -> [[Any]]
+}
 
-class CollectionViewController: UICollectionViewController {
-
+//多列表格组件（通过CollectionView实现）
+class UICollectionGridViewController: UICollectionViewController {
+    //表头数据
+    var cols: [String]! = []
+    //行数据
+    var rows: [[Any]]! = []
+    
+    //排序代理
+    weak var sortDelegate: UICollectionGridViewSortDelegate?
+    
+    //选中的表格列（-1表示没有选中的）
+    private var selectedColIdx = -1
+    //列排序顺序
+    private var asc = true
+    
+    init() {
+        //初始化表格布局
+        let layout = UICollectionGridViewLayout()
+        super.init(collectionViewLayout: layout)
+        layout.viewController = self
+        collectionView!.backgroundColor = UIColor.white
+        collectionView!.register(UICollectionGridViewCell.self,
+                                 forCellWithReuseIdentifier: "cell")
+        collectionView!.delegate = self
+        collectionView!.dataSource = self
+        collectionView!.isDirectionalLockEnabled = true
+        //collectionView!.contentInset = UIEdgeInsetsMake(0, 10, 0, 10)
+        collectionView!.bounces = false
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("UICollectionGridViewController.init(coder:) has not been implemented")
+    }
+    
+    //设置列头数据
+    func setColumns(columns: [String]) {
+        cols = columns
+    }
+    
+    //添加行数据
+    func addRow(row: [Any]) {
+        rows.append(row)
+        collectionView!.collectionViewLayout.invalidateLayout()
+        collectionView!.reloadData()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Register cell classes
-        self.collectionView!.register(UICollectionViewCell.self, forCellWithReuseIdentifier: reuseIdentifier)
-
-        // Do any additional setup after loading the view.
     }
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using [segue destinationViewController].
-        // Pass the selected object to the new view controller.
+    
+    override func viewDidLayoutSubviews() {
+        collectionView!.frame = CGRect(x:0, y:0,
+                                       width:view.frame.width, height:view.frame.height)
     }
-    */
-
-    // MARK: UICollectionViewDataSource
-
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+    }
+    
+    //返回表格总行数
     override func numberOfSections(in collectionView: UICollectionView) -> Int {
-        // #warning Incomplete implementation, return the number of sections
-        return 0
+        if cols.isEmpty {
+            return 0
+        }
+        //总行数是：记录数＋1个表头
+        return rows.count + 1
     }
-
-
-    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of items
-        return 0
+    
+    //返回表格的列数
+    override func collectionView(_ collectionView: UICollectionView,
+                                 numberOfItemsInSection section: Int) -> Int {
+        return cols.count
     }
-
-    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath)
     
-        // Configure the cell
-    
+    //单元格内容创建
+    override func collectionView(_ collectionView: UICollectionView,
+                                 cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell",
+                                                      for: indexPath) as! UICollectionGridViewCell
+        
+        //设置列头单元格，内容单元格的数据
+        if indexPath.section == 0 {
+            cell.label.font = UIFont.systemFont(ofSize: 15, weight: UIFont.Weight.bold)
+            cell.label.text = cols[indexPath.row]
+            cell.label.textColor = UIColor.white
+        } else {
+            cell.label.font = UIFont.systemFont(ofSize: 15)
+            cell.label.text = "\(rows[indexPath.section-1][indexPath.row])"
+            cell.label.textColor = UIColor.black
+        }
+        
+        //表头单元格背景色
+        if indexPath.section == 0 {
+            cell.backgroundColor = UIColor(red: 0x91/255, green: 0xDA/255,
+                                           blue: 0x51/255, alpha: 1)
+            //排序列列头显示升序降序图标
+//            if indexPath.row == selectedColIdx {
+//                let iconType = asc ? FAType.FALongArrowUp : FAType.FALongArrowDown
+//                cell.imageView.setFAIconWithName(icon: iconType, textColor: UIColor.white)
+//            }else{
+//                cell.imageView.image = nil
+//            }
+        }
+            //内容单元格背景色
+        else {
+            //排序列的单元格背景会变色
+            if indexPath.row == selectedColIdx {
+                //排序列的单元格背景会变色
+                cell.backgroundColor = UIColor(red: 0xCC/255, green: 0xF8/255,
+                                               blue: 0xFF/255, alpha: 1)
+            }
+                //数据区域每行单元格背景色交替显示
+            else if indexPath.section % 2 == 0 {
+                cell.backgroundColor = UIColor(white: 242/255.0, alpha: 1)
+            } else {
+                cell.backgroundColor = UIColor.white
+            }
+        }
+        
         return cell
     }
-
-    // MARK: UICollectionViewDelegate
-
-    /*
-    // Uncomment this method to specify if the specified item should be highlighted during tracking
-    override func collectionView(_ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment this method to specify if the specified item should be selected
-    override func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment these methods to specify if an action menu should be displayed for the specified item, and react to actions performed on the item
-    override func collectionView(_ collectionView: UICollectionView, shouldShowMenuForItemAt indexPath: IndexPath) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, canPerformAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, performAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) {
     
+    //单元格选中事件
+    override func collectionView(_ collectionView: UICollectionView,
+                                 didSelectItemAt indexPath: IndexPath) {
+        //打印出点击单元格的［行,列］坐标
+        print("点击单元格的[行,列]坐标: [\(indexPath.section),\(indexPath.row)]")
+        if indexPath.section == 0 && sortDelegate != nil {
+            //如果点击的是表头单元格，则默认该列升序排列，再次点击则变降序排列，以此交替
+            asc = (selectedColIdx != indexPath.row) ? true : !asc
+            selectedColIdx = indexPath.row
+            rows = sortDelegate?.sort(colIndex: indexPath.row, asc: asc, rows: rows)
+            collectionView.reloadData()
+        }
     }
-    */
-
 }
